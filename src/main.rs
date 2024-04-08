@@ -16,14 +16,20 @@ fn main() {
 
     println!("Let's first place your own battleships...");
 
-    let mut player_ships: Vec<Battleship> = Vec::with_capacity(BattleshipName::VARIANTS.len());
-    let board = Board {
-        x_size: 5,
-        y_size: 5,
+    let allowed_chars = BoardPosition::get_allowed_characters();
+    let mut board = Board {
+        x_size: allowed_chars.iter().count() as u16,
+        y_size: allowed_chars.iter().count() as u16,
+        player_ships: Vec::with_capacity(BattleshipName::VARIANTS.len()),
     };
 
     'ship_loop: for ship_name in BattleshipName::iter() {
         loop {
+            println!("-----");
+            println!("Current board:");
+            board.print_board();
+            println!("-----");
+
             let mut ship_size_input = String::new();
             println!("Provide size for ship '{:#?}'", ship_name);
 
@@ -62,12 +68,17 @@ fn main() {
                     continue;
                 }
 
+                if board.has_ship_at_cell(&ship_position) {
+                    println!("There is already a ship on position '{start_position_input:#?}'");
+                    continue;
+                }
+
                 loop {
                     let mut ship_direction_input = String::new();
                     println!("In which cardinal direction is this ship placed (North, East, South, West)? ");
 
                     if let Err(_) = io::stdin().read_line(&mut ship_direction_input) {
-                        println!("Failed to read direction, please try again");
+                        eprintln!("Failed to read direction, please try again");
                         continue;
                     }
 
@@ -76,25 +87,25 @@ fn main() {
                     let Ok(ship_direction) =
                         PlacementDirection::from_str(&ship_direction_input.to_uppercase())
                     else {
-                        println!("Cannot parse '{ship_direction_input}' to direction!");
+                        eprintln!("Cannot parse '{ship_direction_input}' to direction!");
                         continue;
                     };
 
                     match board.compute_ship_coordinates(&ship_position, ship_size, &ship_direction)
                     {
                         Ok(ship_coordinates) => {
-                            player_ships.push(Battleship {
+                            board.player_ships.push(Battleship {
                                 name: ship_name,
                                 size: ship_size as u32,
                                 coordinates: ship_coordinates,
                             });
 
-                            println!("Successfully placed {ship_name:?}!");
+                            eprintln!("Successfully placed {ship_name:?}!");
 
                             continue 'ship_loop;
                         }
                         Err(message) => {
-                            println!("Ship could not be placed in that direction: {message}");
+                            eprintln!("Ship could not be placed in that direction: {message}");
                             continue;
                         }
                     }
@@ -103,24 +114,4 @@ fn main() {
         }
     }
     println!("All your ships have been placed. Let's play the game!");
-}
-
-fn generate_empty_ship_set() -> Vec<Battleship> {
-    let mut ships: Vec<Battleship> = Vec::new();
-    let mut rng = rand::thread_rng();
-
-    for ship_name in BattleshipName::iter() {
-        let ship_size = rng.gen_range(1..6);
-        println!(
-            "Generating random size for {:#?}: {:#?}",
-            ship_name, ship_size
-        );
-        ships.push(Battleship {
-            name: ship_name,
-            size: ship_size,
-            coordinates: vec![],
-        })
-    }
-
-    ships
 }
